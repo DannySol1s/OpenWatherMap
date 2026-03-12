@@ -134,7 +134,7 @@ export default function WeatherRankings() {
   };
 
   return (
-    <div className="glass-card border-purple-500/20 bg-black/40 p-0 overflow-hidden mb-8 shadow-2xl transition-all duration-500">
+    <div className="glass-card border-white/20 bg-black/40 backdrop-blur-md p-0 overflow-hidden mb-8 shadow-2xl transition-all duration-500">
       {/* Selector de Modalidad (Toggle) */}
       <div className="px-6 pt-6 flex justify-center">
         <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 w-full max-w-xs shadow-inner">
@@ -202,7 +202,7 @@ export default function WeatherRankings() {
       </div>
 
       {/* Lista del Ranking */}
-      <div className="p-6 h-[450px]">
+      <div className="p-6 h-auto min-h-[400px] pb-10">
         {(loading || geoLoading) ? (
           <div className="h-full flex flex-col items-center justify-center gap-4">
             <Loader2 className="w-10 h-10 animate-spin text-purple-500" />
