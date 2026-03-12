@@ -5,7 +5,7 @@ import CountrySearch from './CountrySearch';
 
 const API_KEY = '9881114244119304be93da42d1185931';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
-const GEO_API_URL = 'https://countriesnow.space/api/v0.1/countries/cities';
+const GEO_API_URL = 'https://countriesnow.space/api/v0.1/countries/states';
 
 export default function WeatherRankings() {
   const [weatherData, setWeatherData] = useState([]);
@@ -42,10 +42,9 @@ export default function WeatherRankings() {
     }
   }, []);
 
-  const fetchCitiesByCountry = async (countryName) => {
+  const fetchStatesByCountry = async (countryName) => {
     setGeoLoading(true);
     try {
-      // CountriesNow requiere el nombre del país en inglés (que ya tenemos en countryData.js)
       const response = await fetch(GEO_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -53,13 +52,13 @@ export default function WeatherRankings() {
       });
       const result = await response.json();
       
-      if (!result.error && result.data) {
-        // Devolvemos la lista de ciudades. La API suele devolverlas por orden de importancia/alfabético.
-        return result.data;
+      if (!result.error && result.data && result.data.states) {
+        // Extraemos solo los nombres de los estados
+        return result.data.states.map(state => state.name);
       }
       return [];
     } catch (error) {
-      console.error("Error fetching country cities:", error);
+      console.error("Error fetching country states:", error);
       return [];
     } finally {
       setGeoLoading(false);
@@ -72,8 +71,8 @@ export default function WeatherRankings() {
       if (mode === 'global') {
         fetchAllWeatherData(GLOBAL_CITIES);
       } else if (mode === 'country' && selectedCountry) {
-        const countryCities = await fetchCitiesByCountry(selectedCountry.name);
-        fetchAllWeatherData(countryCities);
+        const countryStates = await fetchStatesByCountry(selectedCountry.name);
+        fetchAllWeatherData(countryStates);
       } else {
         setWeatherData([]);
         setLoading(false);
@@ -207,7 +206,7 @@ export default function WeatherRankings() {
           <div className="h-full flex flex-col items-center justify-center gap-4">
             <Loader2 className="w-10 h-10 animate-spin text-purple-500" />
             <p className="text-premium-400 text-sm animate-pulse text-center space-y-2">
-              <span>{geoLoading ? `Consultando ciudades en ${selectedCountry?.esName}...` : 'Analizando datos meteorológicos...'}</span>
+              <span>{geoLoading ? `Consultando estados en ${selectedCountry?.esName}...` : 'Analizando datos meteorológicos...'}</span>
               {!geoLoading && loading && mode === 'country' && <span className="block text-[10px] opacity-60 italic">Esto puede tardar unos segundos</span>}
             </p>
           </div>
@@ -216,7 +215,7 @@ export default function WeatherRankings() {
             <div className="p-4 bg-purple-500/10 rounded-full">
               <Search className="w-8 h-8 text-purple-400" />
             </div>
-            <p className="text-premium-300 font-medium">Busca un país para descubrir sus extremos climáticos.</p>
+            <p className="text-premium-300 font-medium">Busca un país para descubrir sus extremos regionales.</p>
           </div>
         ) : weatherData.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-premium-400 space-y-2">
