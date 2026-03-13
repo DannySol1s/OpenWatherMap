@@ -64,3 +64,33 @@ export const fetchWeatherByCoords = async (lat, lon, moduleOwner) => {
         throw error;
     }
 };
+
+/**
+ * Consulta el pronóstico de 5 días (cada 3 horas)
+ * @param {string} query - Nombre de la ciudad (o string lat,lon si es por coordenadas pero manejado distinto)
+ * @param {boolean} isCoords - Indica si el query son coordenadas en formato "lat,lon"
+ * @returns {Promise<Object>} Datos del pronóstico extendido
+ */
+export const fetch5DayForecast = async (query, isCoords = false) => {
+    try {
+        let url = `${BASE_URL}/forecast?appid=${API_KEY}&units=metric&lang=es`;
+        
+        if (isCoords) {
+            const [lat, lon] = query.split(',');
+            url += `&lat=${lat}&lon=${lon}`;
+        } else {
+            url += `&q=${query}`;
+        }
+
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`Error en la solicitud Forecast: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("Error en Fetch 5-Day Forecast:", error);
+        throw error;
+    }
+};

@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Loader2, Thermometer, Wind, Droplets, Gauge, MapPin, Globe } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Search, Loader2, Thermometer, Wind, Droplets, Gauge, MapPin, Globe, Sun, Cloud, CloudRain, CloudLightning, Snowflake, X, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import ModuleTemplate from '../../components/ModuleTemplate';
-import { fetchAndStoreWeather, fetchWeatherByCoords } from '../../lib/weatherApi';
+import { fetchAndStoreWeather, fetchWeatherByCoords, fetch5DayForecast } from '../../lib/weatherApi';
 import { supabase } from '../../lib/supabase';
 
 const GLOBAL_CITIES = ['Tokio', 'Nueva York', 'Londres', 'París', 'Madrid'];
@@ -12,7 +13,10 @@ export default function ForecastModule() {
     const [city, setCity] = useState('');
     const [loading, setLoading] = useState(false);
     const [weather, setWeather] = useState(null);
+    const [forecast, setForecast] = useState(null);
     const [globalHistory, setGlobalHistory] = useState([]);
+    const [fullHistoryStats, setFullHistoryStats] = useState([]);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [cityHistory, setCityHistory] = useState([]);
     const [error, setError] = useState('');
     const [unit, setUnit] = useState('C');
@@ -22,6 +26,7 @@ export default function ForecastModule() {
     // Cargar historial global al iniciar el componente
     React.useEffect(() => {
         loadGlobalHistoryFromSupabase();
+        loadFullHistoryStats();
     }, []);
 
     const handleSearch = async (e, searchCity = city) => {
@@ -35,12 +40,16 @@ export default function ForecastModule() {
 
         try {
             const data = await fetchAndStoreWeather(searchCity, MODULE_OWNER);
+            const forecastData = await fetch5DayForecast(searchCity);
             setWeather(data);
+            setForecast(forecastData);
             loadCityHistoryFromSupabase(data.name);
             loadGlobalHistoryFromSupabase();
+            loadFullHistoryStats();
         } catch (err) {
             setError('Error al obtener el clima. Por favor, revisa el nombre de la ciudad.');
             setWeather(null);
+            setForecast(null);
             setCityHistory([]);
         } finally {
             setLoading(false);
@@ -65,9 +74,39 @@ export default function ForecastModule() {
                 }
                 return false;
             });
-            setGlobalHistory(filtered.slice(0, 6)); // Mostrar maximo 6
+            // Mostrar maximo 3 en el sidebar rápido según lo solicitado
+            setGlobalHistory(filtered.slice(0, 3)); 
         }
         if (error) console.error("Error al cargar historial global:", error);
+    };
+
+    const loadFullHistoryStats = async () => {
+        const { data, error } = await supabase
+            .from('weather_history')
+            .select('created_at, content')
+            .eq('module_owner', MODULE_OWNER)
+            .order('created_at', { ascending: false })
+            .limit(100); // Traemos hasta 100 para estadísticas
+
+        if (data) {
+            const statsMap = {};
+            data.forEach(record => {
+                const name = record.content.name;
+                if (!statsMap[name]) {
+                    statsMap[name] = {
+                        name,
+                        count: 0,
+                        lastSearched: record.created_at,
+                        country: record.content.sys?.country,
+                        lastTemp: record.content.main.temp
+                    };
+                }
+                statsMap[name].count += 1;
+            });
+            // Convert to array and sort by most searched
+            const statsArray = Object.values(statsMap).sort((a, b) => b.count - a.count);
+            setFullHistoryStats(statsArray);
+        }
     };
 
     const loadCityHistoryFromSupabase = async (cityName) => {
@@ -92,10 +131,13 @@ export default function ForecastModule() {
                     const { latitude, longitude } = position.coords;
                     try {
                         const data = await fetchWeatherByCoords(latitude, longitude, MODULE_OWNER);
+                        const forecastData = await fetch5DayForecast(`${latitude},${longitude}`, true);
                         setWeather(data);
+                        setForecast(forecastData);
                         setCity(data.name);
                         loadCityHistoryFromSupabase(data.name);
                         loadGlobalHistoryFromSupabase();
+                        loadFullHistoryStats();
                     } catch (err) {
                         setError('Error al obtener el clima por ubicación.');
                     } finally {
@@ -149,6 +191,51 @@ export default function ForecastModule() {
             };
         });
     }, [cityHistory, unit]);
+
+    // Helper to pick Icon based on OWM icon code or condition
+    const WeatherIcon = ({ code, className }) => {
+        const id = code?.substring(0, 2);
+        if (id === '01') return <Sun className={`text-yellow-400 ${className}`} />;
+        if (id === '02') return <Cloud className={`text-yellow-200 ${className}`} />;
+        if (['03', '04'].includes(id)) return <Cloud className={`text-slate-300 ${className}`} />;
+        if (['09', '10'].includes(id)) return <CloudRain className={`text-blue-400 ${className}`} />;
+        if (id === '11') return <CloudLightning className={`text-indigo-400 ${className}`} />;
+        if (id === '13') return <Snowflake className={`text-cyan-300 ${className}`} />;
+        return <Cloud className={`text-gray-400 ${className}`} />;
+    };
+
+    // Prepare Hourly Forecast (Next 24 hours = 8 items)
+    const hourlyForecast = useMemo(() => {
+        if (!forecast) return [];
+        return forecast.list.slice(0, 8);
+    }, [forecast]);
+
+    // Prepare Weekly Forecast (1 reading per day ~ noon)
+    const weeklyForecast = useMemo(() => {
+        if (!forecast) return [];
+        const daily = [];
+        const seenDays = new Set();
+        
+        forecast.list.forEach(item => {
+            const date = new Date(item.dt * 1000);
+            const dayString = date.toLocaleDateString();
+            if (!seenDays.has(dayString) && (date.getHours() >= 11 || !seenDays.has(dayString))) {
+                seenDays.add(dayString);
+                daily.push(item);
+            }
+        });
+        
+        return daily.slice(1, 6);
+    }, [forecast]);
+
+    const getDayName = (timestamp) => {
+        const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        return days[new Date(timestamp * 1000).getDay()];
+    };
+
+    const getShortTime = (timestamp) => {
+        return new Date(timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
 
     // Skeleton Loader Component
     const SkeletonLoader = () => (
@@ -299,6 +386,21 @@ export default function ForecastModule() {
                                     </div>
                                 </div>
 
+                                {/* Hourly Forecast (Próximas 24 horas) */}
+                                {hourlyForecast.length > 0 && (
+                                    <div className="glass-card bg-black/10 border-white/5 p-4 overflow-hidden relative shadow-inner">
+                                        <div className="flex overflow-x-auto gap-4 pb-2 custom-scrollbar snap-x">
+                                            {hourlyForecast.map((hour, i) => (
+                                                <div key={i} className="flex flex-col items-center justify-center min-w-[70px] snap-center p-2 rounded-xl hover:bg-white/5 transition-colors">
+                                                    <p className="text-xs font-semibold text-premium-200 mb-2">{getShortTime(hour.dt)}</p>
+                                                    <WeatherIcon code={hour.weather[0].icon} className="w-6 h-6 mb-2" />
+                                                    <p className="text-lg font-bold">{displayTemp(hour.main.temp)}°</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Details Grid - Premium Subtle Gradients */}
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                     <motion.div whileHover={{ y: -5, scale: 1.02 }} className="glass-card bg-gradient-to-br from-white/5 to-transparent hover:from-white/10 transition-all p-5 flex flex-col items-center justify-center text-center border-white/5 shadow-lg relative overflow-hidden group">
@@ -326,19 +428,69 @@ export default function ForecastModule() {
                                         <p className="font-bold text-2xl relative z-10 tracking-tight">{weather.main.pressure} hPa</p>
                                     </motion.div>
                                 </div>
+
+                                {/* Weekly Forecast Grid (Moved from right sidebar) */}
+                                {weeklyForecast.length > 0 && (
+                                    <div className="glass-card border-white/10 p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)] bg-gradient-to-b from-black/20 to-black/40">
+                                        <h3 className="text-sm font-bold text-premium-200 mb-4 uppercase tracking-wider">
+                                            Próximos {weeklyForecast.length} Días
+                                        </h3>
+                                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                                            {weeklyForecast.map((day, idx) => (
+                                                <div key={idx} className="glass-card bg-white/5 p-4 flex flex-col justify-center items-center text-center border-white/5 hover:bg-white/10 transition-colors">
+                                                    <p className="text-sm font-bold text-premium-300 uppercase tracking-widest">{getDayName(day.dt)}</p>
+                                                    <p className="text-[10px] text-premium-400 mt-1 mb-2">{new Date(day.dt * 1000).toLocaleDateString()}</p>
+                                                    <WeatherIcon code={day.weather[0].icon} className="w-10 h-10 mb-2" />
+                                                    <p className="font-black text-2xl text-white drop-shadow-md">
+                                                        {displayTemp(day.main.temp)}°
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </motion.div>
                         ) : null}
                     </AnimatePresence>
                 </div>
 
                 {/* Panel Historial y Gráfica */}
-                <div className="lg:col-span-4 flex flex-col gap-6">
+                <div className="lg:col-span-4 flex flex-col gap-6 self-start w-full">
+                    
+                    {/* Map Component */}
+                    <div className="glass-card w-full border-white/10 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] bg-gradient-to-b from-black/20 to-black/40">
+                        <h3 className="text-sm font-bold text-premium-200 mb-4 uppercase tracking-wider flex items-center justify-between">
+                            Ubicación Geográfica
+                            <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">MAP</span>
+                        </h3>
+                        <div className="w-full h-[200px] rounded-xl overflow-hidden bg-black/40 border border-white/10 relative flex items-center justify-center">
+                            {weather && weather.coord ? (
+                                <iframe 
+                                    title="Weather Location Map"
+                                    width="100%" 
+                                    height="100%" 
+                                    frameBorder="0" 
+                                    scrolling="no" 
+                                    marginHeight="0" 
+                                    marginWidth="0" 
+                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${weather.coord.lon - 0.2},${weather.coord.lat - 0.2},${weather.coord.lon + 0.2},${weather.coord.lat + 0.2}&layer=mapnik&marker=${weather.coord.lat},${weather.coord.lon}`} 
+                                    className="w-full h-full opacity-70 hover:opacity-100 transition-opacity filter invert-[0.9] hue-rotate-180"
+                                ></iframe>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center opacity-30">
+                                    <MapPin className="w-10 h-10 mb-2" />
+                                    <p className="text-xs font-medium">Buscando ubicación...</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {/* Recharts - Temperature Trend */}
                     {weather && chartData.length > 1 && (
                         <motion.div 
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="glass-card border-white/10 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] bg-gradient-to-b from-black/20 to-black/40"
+                            className="glass-card w-full border-white/10 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] bg-gradient-to-b from-black/20 to-black/40"
                         >
                             <h3 className="text-sm font-bold text-premium-200 mb-4 uppercase tracking-wider flex items-center justify-between">
                                 Tendencia (Últimos Registros)
@@ -376,50 +528,60 @@ export default function ForecastModule() {
                     )}
 
                     {/* Historial Sidebar */}
-                    <div className="glass-card flex-1 flex flex-col border-white/10 p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)] min-h-[400px]">
+                    <div className="glass-card w-full flex-1 flex flex-col border-white/10 p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)] min-h-[400px]">
                         <h3 className="text-lg font-bold mb-4 flex items-center justify-between text-white">
                             Consultas Anteriores
                         </h3>
 
                         {loading && !globalHistory.length ? (
-                            <div className="space-y-4 flex-1">
+                            <div className="space-y-4 flex-1 w-full">
                                 {[1, 2, 3].map(i => <div key={i} className="h-16 bg-white/5 animate-pulse rounded-xl" />)}
                             </div>
                         ) : globalHistory.length > 0 ? (
-                            <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                                <AnimatePresence>
-                                    {globalHistory.map((record, idx) => {
-                                        const content = record.content;
-                                        const dateObj = new Date(record.created_at);
-                                        return (
-                                            <motion.div 
-                                                key={`${idx}-${record.created_at}`}
-                                                initial={{ opacity: 0, x: 20 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: idx * 0.1 }}
-                                                onClick={() => handleSearch(null, content.name)}
-                                                className="group bg-gradient-to-r from-white/5 to-transparent hover:from-white/10 transition-all p-4 rounded-xl border border-white/5 cursor-pointer flex items-center gap-4 hover:shadow-[0_0_20px_rgba(255,255,255,0.05)]"
-                                            >
-                                                {/* Avatar */}
-                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-slate-600 flex items-center justify-center font-black text-white shadow-inner flex-shrink-0 group-hover:scale-110 group-hover:border-blue-400/50 transition-all duration-300">
-                                                    {content.name.charAt(0)}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-premium-100 truncate text-base">{content.name}</p>
-                                                    <p className="text-[11px] font-medium text-premium-400 mt-0.5 truncate uppercase tracking-wider">
-                                                        {dateObj.toLocaleDateString()} • {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className="text-xl font-black text-white">{displayTemp(content.main.temp)}°</span>
-                                                </div>
-                                            </motion.div>
-                                        );
-                                    })}
-                                </AnimatePresence>
+                            <div className="flex flex-col w-full h-full justify-between">
+                                <div className="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex-1 mb-4">
+                                    <AnimatePresence>
+                                        {globalHistory.map((record, idx) => {
+                                            const content = record.content;
+                                            const dateObj = new Date(record.created_at);
+                                            return (
+                                                <motion.div 
+                                                    key={`${idx}-${record.created_at}`}
+                                                    initial={{ opacity: 0, x: 20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: idx * 0.1 }}
+                                                    onClick={() => handleSearch(null, content.name)}
+                                                    className="group bg-gradient-to-r from-white/5 to-transparent hover:from-white/10 transition-all p-4 rounded-xl border border-white/5 cursor-pointer flex items-center gap-4 hover:shadow-[0_0_20px_rgba(255,255,255,0.05)]"
+                                                >
+                                                    {/* Avatar */}
+                                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-slate-600 flex items-center justify-center font-black text-white shadow-inner flex-shrink-0 group-hover:scale-110 group-hover:border-blue-400/50 transition-all duration-300">
+                                                        {content.name.charAt(0)}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-bold text-premium-100 truncate text-base">{content.name}</p>
+                                                        <p className="text-[11px] font-medium text-premium-400 mt-0.5 truncate uppercase tracking-wider">
+                                                            {dateObj.toLocaleDateString()} • {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="text-xl font-black text-white">{displayTemp(content.main.temp)}°</span>
+                                                    </div>
+                                                </motion.div>
+                                            );
+                                        })}
+                                    </AnimatePresence>
+                                </div>
+                                
+                                <button
+                                    onClick={() => setShowHistoryModal(true)}
+                                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-bold transition-all border border-blue-500/20"
+                                >
+                                    <FileText className="w-4 h-4" />
+                                    <span>Ver todas las consultas</span>
+                                </button>
                             </div>
                         ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-premium-400 border border-dashed border-white/10 rounded-xl bg-black/20">
+                            <div className="flex-1 w-full flex flex-col items-center justify-center text-center p-6 text-premium-400 border border-dashed border-white/10 rounded-xl bg-black/20">
                                 <Search className="w-10 h-10 mb-4 opacity-20" />
                                 <p className="font-medium">{!weather ? "Busca tu primera ciudad" : "Sin historial previo"}</p>
                                 <p className="text-xs opacity-60 mt-1">El historial aparecerá aquí</p>
@@ -429,6 +591,82 @@ export default function ForecastModule() {
                 </div>
 
             </div>
+
+            {/* History Table Modal - Portal rendered to break out of container restrictions */}
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {showHistoryModal && (
+                        <motion.div 
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }} 
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 lg:p-10 bg-black/60 backdrop-blur-md"
+                            onClick={() => setShowHistoryModal(false)}
+                            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+                        >
+                            <motion.div 
+                                initial={{ scale: 0.95, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.95, y: 20 }}
+                                className="glass-card w-full max-w-4xl max-h-[85vh] flex flex-col border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.8)] bg-gradient-to-b from-slate-900/90 to-black/95 overflow-hidden"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5">
+                                    <h2 className="text-2xl font-black text-white flex items-center gap-3">
+                                        <FileText className="w-6 h-6 text-blue-400" />
+                                        Estadísticas de Búsqueda
+                                    </h2>
+                                    <button 
+                                        onClick={() => setShowHistoryModal(false)}
+                                        className="p-2 hover:bg-white/10 rounded-full transition-colors text-premium-300 hover:text-white"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="flex-1 overflow-auto p-6 custom-scrollbar">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-white/10 text-premium-300 text-sm uppercase tracking-wider">
+                                                <th className="pb-4 font-bold">Ciudad</th>
+                                                <th className="pb-4 font-bold text-center">Última Temp</th>
+                                                <th className="pb-4 font-bold text-center">Búsquedas Totales</th>
+                                                <th className="pb-4 font-bold text-right">Consulta Reciente</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {fullHistoryStats.map((stat, i) => (
+                                                <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
+                                                    <td className="py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center font-bold text-xs">
+                                                                {stat.country || stat.name.charAt(0)}
+                                                            </div>
+                                                            <span className="font-bold text-premium-100 group-hover:text-blue-400 transition-colors">{stat.name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 text-center font-medium text-white">
+                                                        {displayTemp(stat.lastTemp)}°
+                                                    </td>
+                                                    <td className="py-4 text-center">
+                                                        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-black bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                                            {stat.count}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-4 text-right text-sm text-premium-400 font-medium">
+                                                        {new Date(stat.lastSearched).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </ModuleTemplate>
     );
 }
