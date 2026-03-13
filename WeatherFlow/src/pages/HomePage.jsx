@@ -1,142 +1,153 @@
-import { Link } from 'react-router-dom';
-import { CloudRain, Map as MapIcon, ChevronRight, Activity } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { CloudRain, Map as MapIcon, ChevronRight, TrendingUp } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function HomePage() {
-    const [timeOfDay, setTimeOfDay] = useState('day');
+    const [timeOfDay, setTimeOfDay] = useState('day'); // 'day' or 'night'
 
     useEffect(() => {
         const hour = new Date().getHours();
-        if (hour >= 18 || hour < 6) {
-            setTimeOfDay('night');
-        } else {
+        // Day: 6 AM to 6 PM (18:00)
+        if (hour >= 6 && hour < 18) {
             setTimeOfDay('day');
+        } else {
+            setTimeOfDay('night');
         }
     }, []);
 
-    const bgStyles = timeOfDay === 'night'
-        ? "from-indigo-900 via-purple-900 to-black"
-        : "from-blue-600 via-cyan-500 to-indigo-800";
+    const isDay = timeOfDay === 'day';
 
-    const blob1 = timeOfDay === 'night' ? "bg-purple-600/30" : "bg-cyan-300/30";
-    const blob2 = timeOfDay === 'night' ? "bg-indigo-600/30" : "bg-amber-300/30";
+    // Background gradients based on time of day
+    const bgGradients = isDay 
+        ? "bg-amber-500/20 blur-[150px]" 
+        : "bg-blue-600/20 blur-[150px]";
+    
+    const bgGradientsSecondary = isDay 
+        ? "bg-sky-400/20 blur-[150px]" 
+        : "bg-purple-600/20 blur-[150px]";
 
     return (
-        <div className={`min-h-screen p-6 md:p-10 flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-1000 bg-gradient-to-br ${bgStyles}`}>
-            {/* Background decorations */}
-            <motion.div
-                animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [0.3, 0.5, 0.3],
-                }}
-                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                className={`absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-[120px] -z-10 ${blob1}`}
+        <div className="min-h-screen p-6 md:p-10 flex flex-col items-center justify-center max-w-5xl mx-auto relative overflow-hidden">
+            {/* Dynamic Background decorations */}
+            <motion.div 
+                animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0.8, 0.5] }}
+                transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+                className={`absolute top-0 left-0 w-full h-full pointer-events-none -z-20 ${
+                    isDay ? 'bg-gradient-to-br from-indigo-950 via-slate-900 to-sky-900' : 'bg-gradient-to-br from-black via-slate-950 to-indigo-950'
+                } opacity-50`} 
             />
-            <motion.div
-                animate={{
-                    scale: [1, 1.5, 1],
-                    opacity: [0.2, 0.4, 0.2],
-                }}
-                transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                className={`absolute bottom-1/4 right-1/4 w-[30rem] h-[30rem] rounded-full blur-[120px] -z-10 ${blob2}`}
-            />
+            <div className={`absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full transition-colors duration-1000 -z-10 ${bgGradients}`} />
+            <div className={`absolute bottom-1/4 right-1/4 w-[500px] h-[500px] rounded-full transition-colors duration-1000 -z-10 ${bgGradientsSecondary}`} />
 
-            <div className="w-full max-w-5xl mx-auto flex flex-col items-center">
-                {/* Quick Stats Marquee */}
-                <div className="w-full max-w-3xl overflow-hidden mb-12 py-2 relative rounded-full bg-black/20 backdrop-blur-md border border-white/10 shadow-lg">
-                    <motion.div
-                        initial={{ x: "100%" }}
-                        animate={{ x: "-100%" }}
-                        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                        className="flex whitespace-nowrap items-center text-sm md:text-base font-medium text-white/90"
-                    >
-                        <span className="mx-8 flex items-center gap-2">🔥 Tendencia: Campeche 35°C</span>
-                        <span className="mx-8 flex items-center gap-2">📍 Ciudad más buscada hoy: Mérida</span>
-                        <span className="mx-8 flex items-center gap-2">❄️ Frente frío aproximándose por el Norte</span>
-                        <span className="mx-8 flex items-center gap-2">🌧️ Probabilidad de lluvia: Escárcega 80%</span>
-                    </motion.div>
-                </div>
+            <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="text-center mb-16 relative z-10"
+            >
+                <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter drop-shadow-2xl">
+                    Weather<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Flow</span>
+                </h1>
+                <p className="text-xl md:text-2xl text-premium-200 max-w-2xl mx-auto font-light leading-relaxed">
+                    Arquitectura modular para analítica y pronóstico del clima.
+                </p>
+            </motion.div>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
-                    className="text-center mb-16 relative z-10"
+            {/* Quick Stats Marquee */}
+            <div className="w-full max-w-4xl mb-12 overflow-hidden relative z-10 glass-card rounded-full border-white/5 py-3 px-6 shadow-2xl">
+                <motion.div 
+                    animate={{ x: [0, -1000] }}
+                    transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+                    className="flex whitespace-nowrap items-center gap-12"
                 >
-                    <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter drop-shadow-2xl text-white">
-                        Weather<span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-purple-400">Flow</span>
-                    </h1>
-                    <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto font-light leading-relaxed">
-                        Arquitectura modular para analítica y pronóstico del clima.
-                    </p>
+                    <div className="flex items-center gap-2 text-premium-200">
+                        <TrendingUp className="w-4 h-4 text-emerald-400" />
+                        <span><strong>Tendencia:</strong> Mérida es la ciudad más buscada hoy</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-premium-200">
+                        <TrendingUp className="w-4 h-4 text-emerald-400" />
+                        <span><strong>Temperatura Global:</strong> +1.2°C sobre el promedio</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-premium-200">
+                        <TrendingUp className="w-4 h-4 text-emerald-400" />
+                        <span><strong>Clima Severo:</strong> Alertas activas en la costa sureste</span>
+                    </div>
+                    {/* Duplicate for seamless infinite scroll */}
+                    <div className="flex items-center gap-2 text-premium-200">
+                        <TrendingUp className="w-4 h-4 text-emerald-400" />
+                        <span><strong>Tendencia:</strong> Mérida es la ciudad más buscada hoy</span>
+                    </div>
+                </motion.div>
+                {/* Gradient Fades for Marquee */}
+                <div className="absolute top-0 left-0 w-16 h-full bg-gradient-to-r from-black/20 to-transparent pointer-events-none" />
+                <div className="absolute top-0 right-0 w-16 h-full bg-gradient-to-l from-black/20 to-transparent pointer-events-none" />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl relative z-10">
+                {/* Módulo A Card */}
+                <motion.div
+                    whileHover={{ scale: 1.02, y: -5 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                    <Link
+                        to="/module-a"
+                        className="glass-card group relative overflow-hidden flex flex-col p-10 text-left border border-white/10 hover:border-blue-400/50 hover:shadow-[0_0_40px_rgba(59,130,246,0.3)] transition-all duration-300 backdrop-blur-xl h-full"
+                    >
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-cyan-400 opacity-80" />
+                        
+                        <motion.div 
+                            className="absolute -right-10 -top-10 opacity-30 blur-2xl pointer-events-none"
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                        >
+                            <div className="w-40 h-40 bg-blue-500/50 rounded-full" />
+                        </motion.div>
+
+                        <div className="flex justify-between items-start mb-8 relative z-10">
+                            <div className="p-5 bg-blue-500/10 rounded-2xl group-hover:bg-blue-500/20 transition-colors duration-500 border border-blue-500/20 shadow-inner">
+                                <CloudRain className="w-12 h-12 text-blue-400" />
+                            </div>
+                            <ChevronRight className="w-8 h-8 text-premium-400 group-hover:text-blue-400 group-hover:translate-x-2 transition-all duration-300" />
+                        </div>
+                        <h2 className="text-4xl font-bold mb-4 relative z-10 tracking-tight">Consultar Clima</h2>
+                        <p className="text-premium-300 text-lg relative z-10 leading-relaxed">
+                            Módulo Forecast. Consulta el clima actual, visualiza previsiones y registra datos del comportamiento atmosférico.
+                        </p>
+                    </Link>
                 </motion.div>
 
-                <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl relative z-10">
-                    {/* Módulo A Card */}
-                    <motion.div
-                        whileHover={{ scale: 1.02, y: -5 }}
-                        whileTap={{ scale: 0.98 }}
-                        initial={{ opacity: 0, x: -50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5, delay: 0.2 }}
+                {/* Módulo B Card */}
+                <motion.div
+                    whileHover={{ scale: 1.02, y: -5 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                    <Link
+                        to="/module-b"
+                        className="glass-card group relative overflow-hidden flex flex-col p-10 text-left border border-white/10 hover:border-purple-400/50 hover:shadow-[0_0_40px_rgba(168,85,247,0.3)] transition-all duration-300 backdrop-blur-xl h-full"
                     >
-                        <Link
-                            to="/module-a"
-                            className="h-full bg-white/10 backdrop-blur-xl group relative overflow-hidden flex flex-col p-8 md:p-10 text-left border border-white/20 hover:border-cyan-400/50 rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.37)]"
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-400 opacity-80" />
+                        
+                        <motion.div 
+                            className="absolute -right-10 -top-10 opacity-30 blur-2xl pointer-events-none"
+                            animate={{ rotate: -360 }}
+                            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
                         >
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 to-blue-500 opacity-80" />
-                            <div className="flex justify-between items-start mb-8">
-                                <div className="p-5 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-2xl group-hover:scale-110 transition-transform duration-500 border border-white/10 shadow-inner">
-                                    <CloudRain className="w-12 h-12 text-cyan-300" />
-                                </div>
-                                <motion.div
-                                    className="p-3 bg-white/5 rounded-full backdrop-blur-sm"
-                                    whileHover={{ x: 5 }}
-                                >
-                                    <ChevronRight className="w-8 h-8 text-white/50 group-hover:text-cyan-300 transition-colors" />
-                                </motion.div>
+                            <div className="w-40 h-40 bg-purple-500/50 rounded-full" />
+                        </motion.div>
+
+                        <div className="flex justify-between items-start mb-8 relative z-10">
+                            <div className="p-5 bg-purple-500/10 rounded-2xl group-hover:bg-purple-500/20 transition-colors duration-500 border border-purple-500/20 shadow-inner">
+                                <MapIcon className="w-12 h-12 text-purple-400" />
                             </div>
-                            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">Consultar Clima</h2>
-                            <p className="text-white/70 text-lg leading-relaxed">Consulta las condiciones actuales, índice de confort y registra datos históricos.</p>
-
-                            {/* Decorative background icon */}
-                            <CloudRain className="absolute -bottom-6 -right-6 w-48 h-48 text-cyan-400/10 blur-xl group-hover:text-cyan-400/20 transition-colors duration-500" />
-                        </Link>
-                    </motion.div>
-
-                    {/* Módulo B Card */}
-                    <motion.div
-                        whileHover={{ scale: 1.02, y: -5 }}
-                        whileTap={{ scale: 0.98 }}
-                        initial={{ opacity: 0, x: 50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5, delay: 0.3 }}
-                    >
-                        <Link
-                            to="/module-b"
-                            className="h-full bg-white/10 backdrop-blur-xl group relative overflow-hidden flex flex-col p-8 md:p-10 text-left border border-white/20 hover:border-purple-400/50 rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.37)]"
-                        >
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-400 to-pink-500 opacity-80" />
-                            <div className="flex justify-between items-start mb-8">
-                                <div className="p-5 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl group-hover:scale-110 transition-transform duration-500 border border-white/10 shadow-inner">
-                                    <Activity className="w-12 h-12 text-purple-300" />
-                                </div>
-                                <motion.div
-                                    className="p-3 bg-white/5 rounded-full backdrop-blur-sm"
-                                    whileHover={{ x: 5 }}
-                                >
-                                    <ChevronRight className="w-8 h-8 text-white/50 group-hover:text-purple-300 transition-colors" />
-                                </motion.div>
-                            </div>
-                            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">Estadísticas</h2>
-                            <p className="text-white/70 text-lg leading-relaxed">Visualiza mapas, historiales profundos y analíticas globales del sistema.</p>
-
-                            {/* Decorative background icon */}
-                            <MapIcon className="absolute -bottom-6 -right-6 w-48 h-48 text-purple-400/10 blur-xl group-hover:text-purple-400/20 transition-colors duration-500" />
-                        </Link>
-                    </motion.div>
-                </div>
+                            <ChevronRight className="w-8 h-8 text-premium-400 group-hover:text-purple-400 group-hover:translate-x-2 transition-all duration-300" />
+                        </div>
+                        <h2 className="text-4xl font-bold mb-4 relative z-10 tracking-tight">Estadísticas</h2>
+                        <p className="text-premium-300 text-lg relative z-10 leading-relaxed">
+                            Módulo Stats. Visualiza historiales detallados y analíticas globales en una interfaz avanzada.
+                        </p>
+                    </Link>
+                </motion.div>
             </div>
         </div>
     );
