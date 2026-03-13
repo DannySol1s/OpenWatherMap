@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Loader2, Thermometer, Wind, Droplets, Gauge, MapPin, Globe, Sun, Cloud, CloudRain, CloudLightning, Snowflake, X, FileText } from 'lucide-react';
+import { Search, Loader2, Thermometer, Wind, Droplets, Gauge, MapPin, Globe, Sun, Cloud, CloudRain, CloudLightning, Snowflake, X, FileText, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import ModuleTemplate from '../../components/ModuleTemplate';
@@ -10,20 +10,24 @@ import { supabase } from '../../lib/supabase';
 const GLOBAL_CITIES = ['Tokio', 'Nueva York', 'Londres', 'París', 'Madrid'];
 
 export default function ForecastModule() {
-    const [city, setCity] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [weather, setWeather] = useState(null);
-    const [forecast, setForecast] = useState(null);
-    const [globalHistory, setGlobalHistory] = useState([]);
-    const [fullHistoryStats, setFullHistoryStats] = useState([]);
-    const [showHistoryModal, setShowHistoryModal] = useState(false);
-    const [cityHistory, setCityHistory] = useState([]);
-    const [error, setError] = useState('');
-    const [unit, setUnit] = useState('C');
+    // === ESTADOS GLOBALES DEL MÓDULO ===
+    const [city, setCity] = useState('');                 // Almacena la ciudad escrita en el buscador
+    const [loading, setLoading] = useState(false);        // Estado de carga para mostrar el esqueleto (Skeleton Loader)
+    const [weather, setWeather] = useState(null);         // Almacena el clima actual devuelto por la API externa
+    const [forecast, setForecast] = useState(null);       // Almacena el pronóstico a futuro por 5 días (cada 3 hrs)
+    const [globalHistory, setGlobalHistory] = useState([]); // Historial rápido almacenando solo el Top 3 (Para barra lateral)
+    const [fullHistoryStats, setFullHistoryStats] = useState([]); // Historial completo y su tabulación/conteo para la Tabla Modal
+    const [showHistoryModal, setShowHistoryModal] = useState(false); // Condicional (true/false) para ocultar/mostrar la tabla gigante
+    const [cityHistory, setCityHistory] = useState([]);   // Conjunto de temperaturas registradas en el pasado (Para la Gráfica Lineal)
+    const [error, setError] = useState('');               // Registro en vivo de advertencias mostradas visualmente en caso de caída de Red
+    const [unit, setUnit] = useState('C');                // Unidad de medición base global configurada (Celsios 'C' o Fahrenheits 'F')
+    const [aiReport, setAiReport] = useState('');         // Reporte final literario (párrafo) emitido y generado por nuestra IA Local
+    const [isGeneratingAi, setIsGeneratingAi] = useState(false); // Activa el icono parpadeante "Pensando/Cargando" del bloque Inteligente
 
+    // Identificador único de Token para no cruzar información con otros prototipos en Supabase.
     const MODULE_OWNER = 'ModuleForecast';
 
-    // Cargar historial global al iniciar el componente
+    // Hook Disparador (Se carga solapado en la primer pintada): Empuja las librerías a revisar en la nube historiales viejos nada mas entrar
     React.useEffect(() => {
         loadGlobalHistoryFromSupabase();
         loadFullHistoryStats();
@@ -35,6 +39,7 @@ export default function ForecastModule() {
 
         setLoading(true);
         setError('');
+        setAiReport('');
         
         if (searchCity !== city) setCity(searchCity);
 
@@ -46,16 +51,21 @@ export default function ForecastModule() {
             loadCityHistoryFromSupabase(data.name);
             loadGlobalHistoryFromSupabase();
             loadFullHistoryStats();
+            generateAIWeatherReport(data, forecastData);
         } catch (err) {
             setError('Error al obtener el clima. Por favor, revisa el nombre de la ciudad.');
             setWeather(null);
             setForecast(null);
+            setAiReport('');
             setCityHistory([]);
         } finally {
             setLoading(false);
         }
     };
 
+    // === PETICIONES DE RED Y BASES DE DATOS (SUPABASE QUERIES) ===
+
+    // Extrae y devuelve una ráfaga a la nube rápida para anidar los últimos "3" registros dentro del panel lateral derecho.
     const loadGlobalHistoryFromSupabase = async () => {
         const { data, error } = await supabase
             .from('weather_history')
@@ -80,6 +90,7 @@ export default function ForecastModule() {
         if (error) console.error("Error al cargar historial global:", error);
     };
 
+    // Invoca una cota inmensa transversal (100 filas de base de datos históricas) para tabular una sumatoria de la ciudad preferida (En el grid de Ventana Emergente)
     const loadFullHistoryStats = async () => {
         const { data, error } = await supabase
             .from('weather_history')
@@ -109,6 +120,7 @@ export default function ForecastModule() {
         }
     };
 
+    // Filtra la nube usando sintaxis de motor "JSONB" exclusivo de Supabase. Encuentra todo lo referente a UNA ciudad particular (Requerido para el motor de la Gráfica Visual de Recharts)
     const loadCityHistoryFromSupabase = async (cityName) => {
         const { data, error } = await supabase
             .from('weather_history')
@@ -122,6 +134,8 @@ export default function ForecastModule() {
         if (error) console.error("Error al cargar historial por ciudad:", error);
     };
 
+    // === FUNCIONES SENSORIALES GEOGRÁFICAS (GPS NATIVO) ===
+    // Utiliza el hardware físico (Antena Wifi/GPS) para determinar en milisegundos las coordenadas de localización exacta. 
     const handleGeoLocation = () => {
         if (navigator.geolocation) {
             setLoading(true);
@@ -138,6 +152,7 @@ export default function ForecastModule() {
                         loadCityHistoryFromSupabase(data.name);
                         loadGlobalHistoryFromSupabase();
                         loadFullHistoryStats();
+                        generateAIWeatherReport(data, forecastData);
                     } catch (err) {
                         setError('Error al obtener el clima por ubicación.');
                     } finally {
@@ -154,6 +169,9 @@ export default function ForecastModule() {
         }
     };
 
+    // === MÉTODOS DE MUTACIÓN, UTILIDAD Y MATEMÁTICAS (HELPERS) ===
+
+    // Interceptor dinámico trans-matemático de Valores Centígrados/Fahrenheit asíncronos. Realiza la conversión si se presiona el botón Toggle Unit global.
     const displayTemp = (tempC) => {
         if (unit === 'F') return Math.round((tempC * 9/5) + 32);
         return Math.round(tempC);
@@ -171,7 +189,9 @@ export default function ForecastModule() {
         setUnit(prev => prev === 'C' ? 'F' : 'C');
     };
 
-    // Calculate dynamic background based on current weather temperature
+    // === HOOKS SENSORIALES RE-CALCULADOS (MEMOIZATION PARA ALTO RENDIMIENTO) ===
+
+    // Algoritmo Óptico: Retorna y evalúa un Color CSS con Gradiente y Blur "Neon" de acuerdo al grado de T°, así nunca parece plano el Glassmorphism.
     const dynamicModuleColor = useMemo(() => {
         if (!weather) return "bg-blue-500/20";
         const temp = weather.main.temp;
@@ -237,7 +257,77 @@ export default function ForecastModule() {
         return new Date(timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
-    // Skeleton Loader Component
+    // === MOTOR INTELIGENCIA ARTIFICIAL TEXTUAL DIRECTA (ON-PREMISE HEURISTICS) ===
+    // Analizador Condicional Sintético de Inteligencia Artificial ("Reportero"). Evita Costos Operativos Exponenciales procesando el razonamiento matemáticamente usando reglas Big Data exactas y puristas.
+    const generateAIWeatherReport = (currentWeather, forecastData) => {
+        setIsGeneratingAi(true); // Engatillar parpadeo y animación de esqueleto 'Pensando/Procesando'
+        
+        // Simulating AI thinking delay for UX
+        setTimeout(() => {
+            if (!currentWeather) return;
+
+            const temp = currentWeather.main.temp;
+            const humidity = currentWeather.main.humidity;
+            const wind = currentWeather.main.speed || currentWeather.wind?.speed || 0;
+            const conditions = currentWeather.weather[0].description.toLowerCase();
+            const cityName = currentWeather.name;
+
+            // Analyze next few days for rain
+            let upcomingRain = false;
+            let expectedMaxTemp = -100;
+            
+            if (forecastData && forecastData.list) {
+                // Check next 24-48 hours roughly
+                const nearFuture = forecastData.list.slice(0, 16);
+                nearFuture.forEach(item => {
+                    if (item.weather[0].main.toLowerCase().includes('rain')) {
+                        upcomingRain = true;
+                    }
+                    if (item.main.temp_max > expectedMaxTemp) {
+                        expectedMaxTemp = item.main.temp_max;
+                    }
+                });
+            }
+
+            // Build narrative
+            let report = `En ${cityName} se reportan condiciones ${conditions} con una temperatura actual de ${Math.round(temp)}°C. `;
+            
+            // Temperature logic
+            if (temp < 10) {
+                report += `Hace bastante frío. Te sugerimos abrigarte bien antes de salir. `;
+            } else if (temp >= 10 && temp < 20) {
+                report += `El clima está fresco y agradable. Una chaqueta ligera será suficiente. `;
+            } else if (temp >= 20 && temp < 30) {
+                report += `Tenemos una temperatura cálida y confortable, ideal para actividades al aire libre. `;
+            } else {
+                report += `Está haciendo mucho calor. Te recomendamos mantenerte hidratado, buscar la sombra y usar ropa fresca. `;
+            }
+
+            // Wind and Humidity logic
+            if (wind > 8) {
+                report += `Toma precauciones, pues se registran vientos fuertes (${wind} m/s). `;
+            } else if (humidity > 80 && temp >= 25) {
+                report += `La alta humedad (${humidity}%) hace que la sensación térmica sea un poco sofocante. `;
+            }
+
+            // Forecast logic
+            if (upcomingRain) {
+                report += `Según nuestros pronósticos, es muy probable que llueva en las próximas horas o el día de mañana. ¡No olvides tu paraguas!`;
+            } else {
+                if (expectedMaxTemp > temp + 3) {
+                    report += `Se espera que la temperatura suba un poco más en los próximos días, alcanzando hasta ${Math.round(expectedMaxTemp)}°C.`;
+                } else {
+                    report += `El clima se mantendrá relativamente estable sin precipitaciones significativas a la vista.`;
+                }
+            }
+
+            setAiReport(report);
+            setIsGeneratingAi(false);
+        }, 1500); // 1.5s simulated thinking time
+    };
+
+    // === ESQUELETO VISUAL DE CARGA DE ALTO IMPACTO (SKELETON LOADER UX) ===
+    // Careta de plástico provisional dibujada y opacada durante los microsegundos donde no hay ninguna señal y la Red viaja al Extranjero (Mata el "Layout Shift" que tanto disgusta)
     const SkeletonLoader = () => (
         <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -326,7 +416,7 @@ export default function ForecastModule() {
                                 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                                 className="space-y-6"
                             >
-                                {/* Main Card with Dynamic Gradient */}
+                                {/* 💎 PANEL MAESTRO PRINCIPAL (TARJETA TITÁN O HERO LAYER CDE REACCIÓN VISUAL DINÁMICA AL CLIMA) */}
                                 <div className={`glass-card bg-gradient-to-br ${
                                         weather.main.temp < 15 ? 'from-cyan-600/30 to-blue-900/40 border-cyan-400/30' :
                                         weather.main.temp > 28 ? 'from-orange-600/30 to-red-900/40 border-orange-400/30' :
@@ -386,6 +476,47 @@ export default function ForecastModule() {
                                     </div>
                                 </div>
 
+                                {/* 🤖 VENTANA INTELIGENTE SINTÉTICA "IA REPORTERO LOCAL" (Genera Textos Explicativos a manera y Tono de Noticieros con Iconos parpadeando para efecto WOW 3D) */}
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.95 }} 
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.2 }}
+                                    className="glass-card bg-gradient-to-r from-blue-900/30 to-indigo-900/20 border-white/10 p-6 relative overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                                >
+                                    {/* Decorative AI Glow */}
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl" />
+                                    
+                                    <div className="flex gap-4 items-start relative z-10">
+                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg border border-blue-400/30">
+                                            {isGeneratingAi ? (
+                                                <Loader2 className="w-6 h-6 text-white animate-spin" />
+                                            ) : (
+                                                <Sparkles className="w-6 h-6 text-white animate-pulse" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-bold text-blue-300 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                                Análisis IA del Clima
+                                                {isGeneratingAi && <span className="text-[10px] bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-500/30 animate-pulse text-blue-200">Procesando</span>}
+                                            </h3>
+                                            
+                                            <div className="min-h-[60px] flex items-center">
+                                                {isGeneratingAi ? (
+                                                    <div className="space-y-2 w-full">
+                                                        <div className="h-3 bg-white/10 rounded w-full animate-pulse"></div>
+                                                        <div className="h-3 bg-white/10 rounded w-5/6 animate-pulse"></div>
+                                                        <div className="h-3 bg-white/10 rounded w-4/6 animate-pulse"></div>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-premium-100 leading-relaxed text-sm md:text-base font-medium drop-shadow-sm">
+                                                        {aiReport}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+
                                 {/* Hourly Forecast (Próximas 24 horas) */}
                                 {hourlyForecast.length > 0 && (
                                     <div className="glass-card bg-black/10 border-white/5 p-4 overflow-hidden relative shadow-inner">
@@ -429,7 +560,7 @@ export default function ForecastModule() {
                                     </motion.div>
                                 </div>
 
-                                {/* Weekly Forecast Grid (Moved from right sidebar) */}
+                                {/* 📅 FILA PRONÓSTICA PARA 5 DÍAS FUTUROS LONGITUDINALES (Proyecta al horizonte ampliado en cuadros independientes extendidos) */}
                                 {weeklyForecast.length > 0 && (
                                     <div className="glass-card border-white/10 p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)] bg-gradient-to-b from-black/20 to-black/40">
                                         <h3 className="text-sm font-bold text-premium-200 mb-4 uppercase tracking-wider">
