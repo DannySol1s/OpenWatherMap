@@ -40,7 +40,7 @@ export default function ForecastModule() {
         setLoading(true);
         setError('');
         setAiReport('');
-        
+
         if (searchCity !== city) setCity(searchCity);
 
         try {
@@ -85,7 +85,7 @@ export default function ForecastModule() {
                 return false;
             });
             // Mostrar maximo 3 en el sidebar rápido según lo solicitado
-            setGlobalHistory(filtered.slice(0, 3)); 
+            setGlobalHistory(filtered.slice(0, 3));
         }
         if (error) console.error("Error al cargar historial global:", error);
     };
@@ -173,7 +173,7 @@ export default function ForecastModule() {
 
     // Interceptor dinámico trans-matemático de Valores Centígrados/Fahrenheit asíncronos. Realiza la conversión si se presiona el botón Toggle Unit global.
     const displayTemp = (tempC) => {
-        if (unit === 'F') return Math.round((tempC * 9/5) + 32);
+        if (unit === 'F') return Math.round((tempC * 9 / 5) + 32);
         return Math.round(tempC);
     };
 
@@ -235,7 +235,7 @@ export default function ForecastModule() {
         if (!forecast) return [];
         const daily = [];
         const seenDays = new Set();
-        
+
         forecast.list.forEach(item => {
             const date = new Date(item.dt * 1000);
             const dayString = date.toLocaleDateString();
@@ -244,7 +244,7 @@ export default function ForecastModule() {
                 daily.push(item);
             }
         });
-        
+
         return daily.slice(1, 6);
     }, [forecast]);
 
@@ -261,7 +261,7 @@ export default function ForecastModule() {
     // Analizador Condicional Sintético de Inteligencia Artificial ("Reportero"). Evita Costos Operativos Exponenciales procesando el razonamiento matemáticamente usando reglas Big Data exactas y puristas.
     const generateAIWeatherReport = (currentWeather, forecastData) => {
         setIsGeneratingAi(true); // Engatillar parpadeo y animación de esqueleto 'Pensando/Procesando'
-        
+
         // Simulating AI thinking delay for UX
         setTimeout(() => {
             if (!currentWeather) return;
@@ -275,7 +275,7 @@ export default function ForecastModule() {
             // Analyze next few days for rain
             let upcomingRain = false;
             let expectedMaxTemp = -100;
-            
+
             if (forecastData && forecastData.list) {
                 // Check next 24-48 hours roughly
                 const nearFuture = forecastData.list.slice(0, 16);
@@ -291,7 +291,7 @@ export default function ForecastModule() {
 
             // Build narrative
             let report = `En ${cityName} se reportan condiciones ${conditions} con una temperatura actual de ${Math.round(temp)}°C. `;
-            
+
             // Temperature logic
             if (temp < 10) {
                 report += `Hace bastante frío. Te sugerimos abrigarte bien antes de salir. `;
@@ -329,7 +329,7 @@ export default function ForecastModule() {
     // === ESQUELETO VISUAL DE CARGA DE ALTO IMPACTO (SKELETON LOADER UX) ===
     // Careta de plástico provisional dibujada y opacada durante los microsegundos donde no hay ninguna señal y la Red viaja al Extranjero (Mata el "Layout Shift" que tanto disgusta)
     const SkeletonLoader = () => (
-        <motion.div 
+        <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="space-y-6 w-full"
         >
@@ -354,7 +354,7 @@ export default function ForecastModule() {
     return (
         <ModuleTemplate title="Módulo Forecast" moduleColor={dynamicModuleColor}>
             <div className="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8">
-                
+
                 {/* Panel Principal */}
                 <div className="lg:col-span-8 space-y-6">
                     {/* Global Cities Quick Select */}
@@ -411,27 +411,26 @@ export default function ForecastModule() {
                         {loading ? (
                             <SkeletonLoader key="loader" />
                         ) : weather ? (
-                            <motion.div 
+                            <motion.div
                                 key="content"
                                 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                                 className="space-y-6"
                             >
                                 {/* 💎 PANEL MAESTRO PRINCIPAL (TARJETA TITÁN O HERO LAYER CDE REACCIÓN VISUAL DINÁMICA AL CLIMA) */}
-                                <div className={`glass-card bg-gradient-to-br ${
-                                        weather.main.temp < 15 ? 'from-cyan-600/30 to-blue-900/40 border-cyan-400/30' :
+                                <div className={`glass-card bg-gradient-to-br ${weather.main.temp < 15 ? 'from-cyan-600/30 to-blue-900/40 border-cyan-400/30' :
                                         weather.main.temp > 28 ? 'from-orange-600/30 to-red-900/40 border-orange-400/30' :
-                                        'from-emerald-600/30 to-teal-900/40 border-emerald-400/30'
+                                            'from-emerald-600/30 to-teal-900/40 border-emerald-400/30'
                                     } overflow-hidden relative shadow-[0_15px_50px_rgba(0,0,0,0.5)] group`}
                                 >
-                                    <motion.div 
+                                    <motion.div
                                         animate={{ rotate: 360 }} transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
                                         className="absolute -right-20 -bottom-20 opacity-10 pointer-events-none"
                                     >
                                         <Thermometer className="w-96 h-96" />
                                     </motion.div>
-                                    
+
                                     <div className="absolute top-0 right-0 p-6 z-20">
-                                        <button 
+                                        <button
                                             onClick={toggleUnit}
                                             className="px-4 py-2 bg-black/20 hover:bg-black/40 border border-white/10 rounded-full text-sm font-semibold backdrop-blur-xl transition-all shadow-lg"
                                         >
@@ -453,7 +452,7 @@ export default function ForecastModule() {
                                             <p className="text-premium-100 capitalize text-xl flex items-center gap-2 font-light tracking-wide mb-4">
                                                 {weather.weather[0].description}
                                             </p>
-                                            
+
                                             {/* Comfort Index Badge */}
                                             {(() => {
                                                 const comfort = getComfortIndex(weather.main.temp, weather.main.humidity);
@@ -477,15 +476,15 @@ export default function ForecastModule() {
                                 </div>
 
                                 {/* 🤖 VENTANA INTELIGENTE SINTÉTICA "IA REPORTERO LOCAL" (Genera Textos Explicativos a manera y Tono de Noticieros con Iconos parpadeando para efecto WOW 3D) */}
-                                <motion.div 
-                                    initial={{ opacity: 0, scale: 0.95 }} 
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: 0.2 }}
                                     className="glass-card bg-gradient-to-r from-blue-900/30 to-indigo-900/20 border-white/10 p-6 relative overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
                                 >
                                     {/* Decorative AI Glow */}
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl" />
-                                    
+
                                     <div className="flex gap-4 items-start relative z-10">
                                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg border border-blue-400/30">
                                             {isGeneratingAi ? (
@@ -499,7 +498,7 @@ export default function ForecastModule() {
                                                 Análisis IA del Clima
                                                 {isGeneratingAi && <span className="text-[10px] bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-500/30 animate-pulse text-blue-200">Procesando</span>}
                                             </h3>
-                                            
+
                                             <div className="min-h-[60px] flex items-center">
                                                 {isGeneratingAi ? (
                                                     <div className="space-y-2 w-full">
@@ -587,7 +586,7 @@ export default function ForecastModule() {
 
                 {/* Panel Historial y Gráfica */}
                 <div className="lg:col-span-4 flex flex-col gap-6 self-start w-full">
-                    
+
                     {/* Map Component */}
                     <div className="glass-card w-full border-white/10 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] bg-gradient-to-b from-black/20 to-black/40">
                         <h3 className="text-sm font-bold text-premium-200 mb-4 uppercase tracking-wider flex items-center justify-between">
@@ -596,15 +595,15 @@ export default function ForecastModule() {
                         </h3>
                         <div className="w-full h-[200px] rounded-xl overflow-hidden bg-black/40 border border-white/10 relative flex items-center justify-center">
                             {weather && weather.coord ? (
-                                <iframe 
+                                <iframe
                                     title="Weather Location Map"
-                                    width="100%" 
-                                    height="100%" 
-                                    frameBorder="0" 
-                                    scrolling="no" 
-                                    marginHeight="0" 
-                                    marginWidth="0" 
-                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${weather.coord.lon - 0.2},${weather.coord.lat - 0.2},${weather.coord.lon + 0.2},${weather.coord.lat + 0.2}&layer=mapnik&marker=${weather.coord.lat},${weather.coord.lon}`} 
+                                    width="100%"
+                                    height="100%"
+                                    frameBorder="0"
+                                    scrolling="no"
+                                    marginHeight="0"
+                                    marginWidth="0"
+                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${weather.coord.lon - 0.2},${weather.coord.lat - 0.2},${weather.coord.lon + 0.2},${weather.coord.lat + 0.2}&layer=mapnik&marker=${weather.coord.lat},${weather.coord.lon}`}
                                     className="w-full h-full opacity-70 hover:opacity-100 transition-opacity filter invert-[0.9] hue-rotate-180"
                                 ></iframe>
                             ) : (
@@ -618,7 +617,7 @@ export default function ForecastModule() {
 
                     {/* Recharts - Temperature Trend */}
                     {weather && chartData.length > 1 && (
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             className="glass-card w-full border-white/10 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] bg-gradient-to-b from-black/20 to-black/40"
@@ -632,23 +631,23 @@ export default function ForecastModule() {
                                     <LineChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
                                         <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickMargin={8} minTickGap={15} />
                                         <YAxis stroke="#64748b" fontSize={10} domain={['dataMin - 2', 'dataMax + 2']} />
-                                        <Tooltip 
+                                        <Tooltip
                                             contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.8)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px', backdropFilter: 'blur(8px)' }}
                                             itemStyle={{ color: '#fff', fontWeight: 'bold' }}
                                             labelStyle={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}
                                             formatter={(value) => [`${value}°${unit}`, 'Temp']}
                                         />
-                                        <Line 
-                                            type="monotone" 
-                                            dataKey="temp" 
-                                            stroke="#60a5fa" 
-                                            strokeWidth={3} 
+                                        <Line
+                                            type="monotone"
+                                            dataKey="temp"
+                                            stroke="#60a5fa"
+                                            strokeWidth={3}
                                             dot={{ r: 4, fill: '#1e293b', stroke: '#60a5fa', strokeWidth: 2 }}
                                             activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff' }}
                                         />
@@ -676,7 +675,7 @@ export default function ForecastModule() {
                                             const content = record.content;
                                             const dateObj = new Date(record.created_at);
                                             return (
-                                                <motion.div 
+                                                <motion.div
                                                     key={`${idx}-${record.created_at}`}
                                                     initial={{ opacity: 0, x: 20 }}
                                                     animate={{ opacity: 1, x: 0 }}
@@ -702,7 +701,7 @@ export default function ForecastModule() {
                                         })}
                                     </AnimatePresence>
                                 </div>
-                                
+
                                 <button
                                     onClick={() => setShowHistoryModal(true)}
                                     className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-bold transition-all border border-blue-500/20"
@@ -727,15 +726,15 @@ export default function ForecastModule() {
             {typeof document !== 'undefined' && createPortal(
                 <AnimatePresence>
                     {showHistoryModal && (
-                        <motion.div 
-                            initial={{ opacity: 0 }} 
-                            animate={{ opacity: 1 }} 
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className="fixed inset-0 z-[9999] flex items-center justify-center p-4 lg:p-10 bg-black/60 backdrop-blur-md"
                             onClick={() => setShowHistoryModal(false)}
                             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
                         >
-                            <motion.div 
+                            <motion.div
                                 initial={{ scale: 0.95, y: 20 }}
                                 animate={{ scale: 1, y: 0 }}
                                 exit={{ scale: 0.95, y: 20 }}
@@ -747,7 +746,7 @@ export default function ForecastModule() {
                                         <FileText className="w-6 h-6 text-blue-400" />
                                         Estadísticas de Búsqueda
                                     </h2>
-                                    <button 
+                                    <button
                                         onClick={() => setShowHistoryModal(false)}
                                         className="p-2 hover:bg-white/10 rounded-full transition-colors text-premium-300 hover:text-white"
                                     >
