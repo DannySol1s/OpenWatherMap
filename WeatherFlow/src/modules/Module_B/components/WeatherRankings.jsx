@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Thermometer, Wind, Droplets, Cloud, ChevronUp, ChevronDown, Loader2, Globe, MapPin, Search } from 'lucide-react';
+import { Thermometer, Wind, Droplets, Cloud, ChevronUp, ChevronDown, Loader2, Globe, MapPin, Search, Navigation } from 'lucide-react';
 import CountrySearch from './CountrySearch';
 import { WORLD_CAPITALS } from '../utils/worldCapitals';
 
@@ -11,11 +11,66 @@ export default function WeatherRankings() {
   const [weatherData, setWeatherData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
   const [category, setCategory] = useState('temp'); // temp, wind, humidity, sky
   const [subCategory, setSubCategory] = useState('high'); // high, low
-  const [mode, setMode] = useState('global'); // global, country
+  const [mode, setMode] = useState('global'); // global, country, local
   const [selectedCountry, setSelectedCountry] = useState(null);
+
+  const handleLocationSearch = () => {
+    if (!navigator.geolocation) {
+      alert("Tu navegador no soporta geolocalización.");
+      return;
+    }
+
+    setMode('local');
+    setIsLocating(true);
+    setLoading(true);
+    setWeatherData([]);
+    setSelectedCountry(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          // Pide hasta 15 localidades cercanas para tener un buen margen de filtrado top 5
+          const res = await fetch(`${BASE_URL}/find?lat=${latitude}&lon=${longitude}&cnt=15&appid=${API_KEY}&units=metric&lang=es`);
+          const data = await res.json();
+          
+          if (data.cod === "200" && data.list) {
+            const mappedData = data.list.map(city => ({
+              id: city.id || Math.random(),
+              name: city.name,
+              country: city.sys?.country || '',
+              temp: city.main?.temp || 0,
+              windSpeed: city.wind?.speed || 0,
+              humidity: city.main?.humidity || 0,
+              clouds: city.clouds?.all || 0,
+              description: city.weather?.[0]?.description || ''
+            }));
+            
+            // Filtramos duplicados por nombre si existieran
+            const uniqueData = Array.from(new Map(mappedData.map(item => [item.name, item])).values());
+            setWeatherData(uniqueData);
+          } else {
+            setWeatherData([]);
+          }
+        } catch (error) {
+          console.error("Error obteniendo ubicación local:", error);
+        } finally {
+          setIsLocating(false);
+          setLoading(false);
+        }
+      },
+      (error) => {
+        console.error("Error de geolocalización:", error);
+        alert("No pudimos acceder a tu ubicación. Verifica los permisos de tu navegador o dispositivo.");
+        setIsLocating(false);
+        setLoading(false);
+      }
+    );
+  };
 
   const fetchAllWeatherData = useCallback(async (citiesToFetch) => {
     if (!citiesToFetch || citiesToFetch.length === 0) {
@@ -112,13 +167,16 @@ export default function WeatherRankings() {
       } else if (mode === 'country' && selectedCountry) {
         const countryStates = await fetchStatesByCountry(selectedCountry.name);
         fetchAllWeatherData(countryStates);
-      } else {
+      } else if (mode !== 'local') {
         setWeatherData([]);
         setLoading(false);
       }
     };
 
-    loadData();
+    // Evitamos pisar el flujo de geolocalización
+    if (mode !== 'local') {
+      loadData();
+    }
   }, [mode, selectedCountry, fetchAllWeatherData]);
 
   const handleCountrySelect = (country) => {
@@ -174,7 +232,7 @@ export default function WeatherRankings() {
   return (
     <div className="glass-card border-white/20 bg-black/40 backdrop-blur-md p-0 overflow-hidden mb-8 shadow-2xl transition-all duration-500">
       {/* Selector de Modalidad (Toggle) */}
-      <div className="px-6 pt-6 flex justify-center">
+      <div className="px-6 pt-6 flex justify-center items-center gap-3">
         <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 w-full max-w-xs shadow-inner">
           <button 
             onClick={() => setMode('global')}
@@ -183,12 +241,31 @@ export default function WeatherRankings() {
             <Globe className="w-4 h-4" /> Global
           </button>
           <button 
-            onClick={() => setMode('country')}
+            onClick={() => {
+              setMode('country');
+              if (!selectedCountry) setWeatherData([]); // Limpia datos locales
+            }}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl transition-all text-sm font-bold ${mode === 'country' ? 'bg-purple-500/20 text-white border border-purple-500/20 shadow-lg' : 'text-premium-400 hover:text-white'}`}
           >
             <MapPin className="w-4 h-4" /> Por País
           </button>
         </div>
+
+        {/* Botón de Geolocalización (Solo visible si no es Global) */}
+        {mode !== 'global' && (
+          <button
+            onClick={handleLocationSearch}
+            disabled={isLocating}
+            className={`p-2.5 rounded-full border transition-all duration-300 shadow-lg flex items-center justify-center animate-in zoom-in duration-300 ${mode === 'local' || isLocating ? 'bg-purple-500/30 border-purple-500/50 text-white' : 'bg-white/5 border-white/10 text-premium-400 hover:text-white hover:bg-white/10 hover:border-white/20'}`}
+            title="Buscar en mi zona cercana"
+          >
+            {isLocating ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Navigation className="w-5 h-5" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Buscador de País (Solo si mode === 'country') */}
@@ -203,7 +280,7 @@ export default function WeatherRankings() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
             <h3 className="text-xl font-bold bg-gradient-to-r from-white to-premium-300 bg-clip-text text-transparent">
-              Top 5 {mode === 'global' ? 'Mundial' : selectedCountry ? `en ${selectedCountry.esName}` : ''}
+              Top 5 {mode === 'global' ? 'Mundial' : mode === 'local' ? 'en Tu Zona Cercana' : selectedCountry ? `en ${selectedCountry.esName}` : ''}
             </h3>
           </div>
           
@@ -245,13 +322,19 @@ export default function WeatherRankings() {
           <div className="h-full flex flex-col items-center justify-center gap-4">
             <Loader2 className="w-10 h-10 animate-spin text-purple-500" />
             <div className="text-premium-400 text-sm text-center space-y-2">
-              <span className="block animate-pulse">{geoLoading ? `Consultando base de datos geoespacial para ${selectedCountry?.esName}...` : 'Procesando set de datos climáticos masivos...'}</span>
-              {!geoLoading && loading && loadingProgress.total > 0 && (
+              <span className="block animate-pulse">
+                {geoLoading 
+                  ? `Consultando base de datos geoespacial para ${selectedCountry?.esName}...` 
+                  : isLocating
+                  ? 'Obteniendo coordenadas GPS y escaneando municipios cercanos...'
+                  : 'Procesando set de datos climáticos masivos...'}
+              </span>
+              {!geoLoading && !isLocating && loading && loadingProgress.total > 0 && (
                 <span className="block text-xs font-bold text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20 inline-block mt-2 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
                   Analizando {loadingProgress.current} de {loadingProgress.total} locaciones
                 </span>
               )}
-              {!geoLoading && loading && mode === 'country' && <span className="block text-[10px] opacity-60 italic mt-1">Optimizando respuesta en el cliente para evitar latencia</span>}
+              {!geoLoading && !isLocating && loading && (mode === 'country' || mode === 'local') && <span className="block text-[10px] opacity-60 italic mt-1">Optimizando respuesta en el cliente para evitar latencia</span>}
             </div>
           </div>
         ) : mode === 'country' && !selectedCountry ? (
@@ -264,7 +347,7 @@ export default function WeatherRankings() {
         ) : weatherData.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-premium-400 space-y-2">
             <Search className="w-12 h-12 opacity-10" />
-            <p className="text-sm">No pudimos obtener datos para este país.</p>
+            <p className="text-sm">No pudimos obtener datos para este país o zona.</p>
           </div>
         ) : (
           <div className="space-y-4 animate-in fade-in duration-500">
