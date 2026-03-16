@@ -1,7 +1,53 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Thermometer, Wind, Droplets, Cloud, ChevronUp, ChevronDown, Loader2, Globe, MapPin, Search, Navigation } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 import CountrySearch from './CountrySearch';
 import { WORLD_CAPITALS } from '../utils/worldCapitals';
+
+// Arreglo temporal de iconos por defecto de Leaflet para React Vite
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// Icono personalizado para el usuario (Neón Púrpura)
+const userIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/2.0.0/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+// Utilidad matemática: Fórmula del semiverseno (Haversine) para calcular distancias en metros
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; // Radio de la Tierra en metros
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lon2-lon1) * Math.PI/180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c; 
+};
+
+// Componente utilitario para auto-ajustar la vista del mapa
+function ChangeMapView({ center, zoom }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo(center, zoom, { duration: 1.5 });
+  }, [center, zoom, map]);
+  return null;
+}
 
 const API_KEY = '9881114244119304be93da42d1185931';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
@@ -17,6 +63,23 @@ export default function WeatherRankings() {
   const [subCategory, setSubCategory] = useState('high'); // high, low
   const [mode, setMode] = useState('global'); // global, country, local
   const [selectedCountry, setSelectedCountry] = useState(null);
+  const [myLocation, setMyLocation] = useState(null); // Almacena coordenandas del usuario
+
+  // Extrae y calcula el radio dinámico para el mapa (Distancia máxima)
+  const maxSearchRadius = useMemo(() => {
+    if (mode !== 'local' || !myLocation || weatherData.length === 0) return 0;
+    
+    let maxDist = 0;
+    weatherData.forEach(city => {
+      if (city.lat && city.lon) {
+        const dist = calculateDistance(myLocation.lat, myLocation.lon, city.lat, city.lon);
+        if (dist > maxDist) maxDist = dist;
+      }
+    });
+    
+    // Le agregamos un pequeño margen del 10% para que el círculo no abrace exactamente el límite
+    return maxDist * 1.10; 
+  }, [weatherData, mode, myLocation]);
 
   const handleLocationSearch = () => {
     if (!navigator.geolocation) {
@@ -34,12 +97,14 @@ export default function WeatherRankings() {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
+          setMyLocation({ lat: latitude, lon: longitude });
+          
           // Pide hasta 15 localidades cercanas para tener un buen margen de filtrado top 5
           const res = await fetch(`${BASE_URL}/find?lat=${latitude}&lon=${longitude}&cnt=15&appid=${API_KEY}&units=metric&lang=es`);
           const data = await res.json();
           
           if (data.cod === "200" && data.list) {
-            const mappedData = data.list.map(city => ({
+            const mappedData = data.list.map((city, index) => ({
               id: city.id || Math.random(),
               name: city.name,
               country: city.sys?.country || '',
@@ -47,7 +112,10 @@ export default function WeatherRankings() {
               windSpeed: city.wind?.speed || 0,
               humidity: city.main?.humidity || 0,
               clouds: city.clouds?.all || 0,
-              description: city.weather?.[0]?.description || ''
+              description: city.weather?.[0]?.description || '',
+              lat: city.coord?.lat,
+              lon: city.coord?.lon,
+              originalIndex: index // Guardamos para saber su posición cruda
             }));
             
             // Filtramos duplicados por nombre si existieran
@@ -244,6 +312,7 @@ export default function WeatherRankings() {
             onClick={() => {
               setMode('country');
               if (!selectedCountry) setWeatherData([]); // Limpia datos locales
+              setMyLocation(null);
             }}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl transition-all text-sm font-bold ${mode === 'country' ? 'bg-purple-500/20 text-white border border-purple-500/20 shadow-lg' : 'text-premium-400 hover:text-white'}`}
           >
@@ -389,6 +458,93 @@ export default function WeatherRankings() {
           </div>
         )}
       </div>
+
+      {/* Visor de Mapa Regional (Solo visible en mode === 'local' y con datos trazados) */}
+      {mode === 'local' && myLocation && !loading && weatherData.length > 0 && (
+        <div className="p-6 border-t border-white/10 bg-black/40 animate-in slide-in-from-bottom-4 duration-700">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold bg-gradient-to-r from-white to-purple-300 bg-clip-text text-transparent flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-purple-400" />
+              Impacto Regional del Escáner API
+            </h3>
+            <span className="text-xs text-premium-400 italic">Radio detectado: {(maxSearchRadius / 1000).toFixed(1)} km</span>
+          </div>
+          
+          <div className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_30px_rgba(168,85,247,0.15)] relative h-[400px] bg-gray-900 z-0">
+            <MapContainer 
+              center={[myLocation.lat, myLocation.lon]} 
+              zoom={10} 
+              style={{ height: '100%', width: '100%', backgroundColor: '#0f172a' }}
+              zoomControl={false}
+            >
+              <ChangeMapView center={[myLocation.lat, myLocation.lon]} zoom={10} />
+              
+              {/* TileLayer estilo oscuro elegante (CartoDB Dark Matter) */}
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                subdomains="abcd"
+                maxZoom={20}
+              />
+
+              {/* Círculo expansivo de radio dinámico según la localidad más lejana reportada por OWM */}
+              <Circle 
+                center={[myLocation.lat, myLocation.lon]} 
+                radius={maxSearchRadius} 
+                pathOptions={{ 
+                  color: '#a855f7', 
+                  fillColor: '#8b5cf6', 
+                  fillOpacity: 0.1,
+                  dashArray: '10, 10',
+                  weight: 2
+                }}
+              />
+
+              {/* Pin de Ubicación Exacta del Usuario */}
+              <Marker position={[myLocation.lat, myLocation.lon]} icon={userIcon} zIndexOffset={1000}>
+                <Popup className="glass-popup custom-leaflet-popup">
+                  <div className="font-bold text-sm text-purple-600">Tú estás aquí</div>
+                  <div className="text-xs text-gray-500">Punto Cero GPS (MY_LOCATION)</div>
+                </Popup>
+              </Marker>
+
+              {/* Mapeo de Locales Detectados por el Radar (Los Originales) */}
+              {weatherData.map((loc) => {
+                // Buscamos si esta localidad quedó en el Top 5 después del sorteo actúal
+                const currentTop5 = getRankedData();
+                const rankPos = currentTop5.findIndex(top => top.id === loc.id);
+                const isInTop5 = rankPos !== -1;
+
+                if (!loc.lat || !loc.lon) return null;
+
+                return (
+                  <Marker key={`map-${loc.id}`} position={[loc.lat, loc.lon]} opacity={isInTop5 ? 1 : 0.6}>
+                    <Popup className="glass-popup">
+                      <div className="font-bold text-sm bg-gradient-to-r from-purple-800 to-black bg-clip-text text-transparent">
+                        {loc.name}
+                      </div>
+                      <div className="flex justify-between items-center text-xs mt-1 border-t border-gray-100 pt-1">
+                        <span className="text-gray-600 font-medium">Temperatura:</span>
+                        <span className="font-bold">{Math.round(loc.temp)}°C</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs mt-0.5">
+                        <span className="text-gray-600 font-medium">Condición:</span>
+                        <span className="capitalize">{loc.description}</span>
+                      </div>
+                      
+                      {isInTop5 && (
+                        <div className="mt-2 bg-gradient-to-r from-purple-100 to-purple-50 text-purple-700 text-[10px] font-black uppercase text-center py-1 rounded-md border border-purple-200">
+                          #{rankPos + 1} en Ranking Actual
+                        </div>
+                      )}
+                    </Popup>
+                  </Marker>
+                );
+              })}
+            </MapContainer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
