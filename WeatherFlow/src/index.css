@@ -20,7 +20,7 @@
 
 @layer base {
   body {
-    @apply bg-premium-950 text-premium-50 font-sans min-h-screen bg-gradient-to-br from-premium-900 to-premium-950;
+    @apply bg-premium-950 text-premium-50 font-sans min-h-screen bg-gradient-to-br from-premium-900 to-premium-950 overflow-x-hidden w-full;
   }
 }
 

@@ -353,10 +353,10 @@ export default function ForecastModule() {
 
     return (
         <ModuleTemplate title="Módulo Forecast" moduleColor={dynamicModuleColor}>
-            <div className="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8">
+            <div className="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8 w-full">
 
                 {/* Panel Principal */}
-                <div className="lg:col-span-8 space-y-6">
+                <div className="lg:col-span-8 space-y-6 w-full min-w-0">
                     {/* Global Cities Quick Select */}
                     <div className="flex flex-wrap gap-2 items-center mb-2 z-20 relative">
                         <Globe className="w-4 h-4 text-premium-300 mr-2" />
@@ -424,32 +424,32 @@ export default function ForecastModule() {
                                 >
                                     <motion.div
                                         animate={{ rotate: 360 }} transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-                                        className="absolute -right-20 -bottom-20 opacity-10 pointer-events-none"
+                                        className="absolute -right-10 -bottom-10 sm:-right-20 sm:-bottom-20 opacity-10 pointer-events-none"
                                     >
-                                        <Thermometer className="w-96 h-96" />
+                                        <Thermometer className="w-64 h-64 sm:w-96 sm:h-96" />
                                     </motion.div>
 
-                                    <div className="absolute top-0 right-0 p-6 z-20">
+                                    <div className="absolute top-0 right-0 p-4 sm:p-6 z-20">
                                         <button
                                             onClick={toggleUnit}
-                                            className="px-4 py-2 bg-black/20 hover:bg-black/40 border border-white/10 rounded-full text-sm font-semibold backdrop-blur-xl transition-all shadow-lg"
+                                            className="px-3 py-1.5 sm:px-4 sm:py-2 bg-black/20 hover:bg-black/40 border border-white/10 rounded-full text-xs sm:text-sm font-semibold backdrop-blur-xl transition-all shadow-lg"
                                         >
                                             °{unit === 'C' ? 'F' : 'C'}
                                         </button>
                                     </div>
 
-                                    <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end p-8 gap-6">
-                                        <div>
+                                    <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end p-4 sm:p-6 md:p-8 gap-4 sm:gap-6 mt-6 sm:mt-0">
+                                        <div className="w-full">
                                             {/* Location Hierarchy */}
-                                            <div className="flex flex-wrap items-center gap-3 mb-2">
-                                                <h2 className="text-5xl md:text-6xl font-black tracking-tighter drop-shadow-xl">{weather.name}</h2>
+                                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                                                <h2 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter drop-shadow-xl truncate max-w-full">{weather.name}</h2>
                                                 {weather.sys?.country && (
-                                                    <span className="text-sm font-bold bg-white/10 px-3 py-1.5 rounded-lg text-white border border-white/20 backdrop-blur-md shadow-inner self-center md:self-end mb-1 md:mb-2">
+                                                    <span className="text-xs sm:text-sm font-bold bg-white/10 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-white border border-white/20 backdrop-blur-md shadow-inner mb-1 flex-shrink-0">
                                                         {weather.sys.country}
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-premium-100 capitalize text-xl flex items-center gap-2 font-light tracking-wide mb-4">
+                                            <p className="text-premium-100 capitalize text-lg sm:text-xl flex items-center gap-2 font-light tracking-wide mb-3 sm:mb-4">
                                                 {weather.weather[0].description}
                                             </p>
 
@@ -457,19 +457,19 @@ export default function ForecastModule() {
                                             {(() => {
                                                 const comfort = getComfortIndex(weather.main.temp, weather.main.humidity);
                                                 return (
-                                                    <div className={`mt-2 inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold shadow-lg backdrop-blur-md border ${comfort.color}`}>
-                                                        <span className="relative flex h-2.5 w-2.5">
+                                                    <div className={`mt-2 inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-md border ${comfort.color}`}>
+                                                        <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5">
                                                             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current`}></span>
-                                                            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 bg-current`}></span>
+                                                            <span className={`relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-current`}></span>
                                                         </span>
                                                         {comfort.label}
                                                     </div>
                                                 )
                                             })()}
                                         </div>
-                                        <div className="text-left md:text-right w-full md:w-auto mt-4 md:mt-0">
-                                            <h3 className="text-8xl md:text-9xl font-black tracking-tighter drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]">
-                                                {displayTemp(weather.main.temp)}°<span className="text-4xl md:text-5xl text-white/40 ml-1">{unit}</span>
+                                        <div className="text-left md:text-right w-full md:w-auto mt-2 md:mt-0 flex items-center justify-between md:block">
+                                            <h3 className="text-7xl sm:text-8xl md:text-9xl font-black tracking-tighter drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]">
+                                                {displayTemp(weather.main.temp)}°<span className="text-3xl sm:text-4xl md:text-5xl text-white/40 ml-1">{unit}</span>
                                             </h3>
                                         </div>
                                     </div>
@@ -585,7 +585,7 @@ export default function ForecastModule() {
                 </div>
 
                 {/* Panel Historial y Gráfica */}
-                <div className="lg:col-span-4 flex flex-col gap-6 self-start w-full">
+                <div className="lg:col-span-4 flex flex-col gap-6 self-start w-full min-w-0">
 
                     {/* Map Component */}
                     <div className="glass-card w-full border-white/10 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] bg-gradient-to-b from-black/20 to-black/40">

@@ -339,21 +339,21 @@ export default function WeatherRankings() {
 
       {/* Buscador de País (Solo si mode === 'country') */}
       {mode === 'country' && (
-        <div className="px-6 pt-6 flex justify-center animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="px-4 sm:px-6 pt-6 flex justify-center animate-in fade-in slide-in-from-top-4 duration-300">
           <CountrySearch onSelectCountry={handleCountrySelect} />
         </div>
       )}
 
       {/* Header con Filtros de Categoría */}
-      <div className="p-6 border-b border-white/10 bg-gradient-to-r from-purple-500/10 to-transparent mt-2">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <h3 className="text-xl font-bold bg-gradient-to-r from-white to-premium-300 bg-clip-text text-transparent">
+      <div className="p-4 sm:p-6 border-b border-white/10 bg-gradient-to-r from-purple-500/10 to-transparent mt-2">
+        <div className="flex flex-col xl:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-3 w-full xl:w-auto justify-center xl:justify-start">
+            <h3 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-white to-premium-300 bg-clip-text text-transparent text-center xl:text-left">
               Top 5 {mode === 'global' ? 'Mundial' : mode === 'local' ? 'en Tu Zona Cercana' : selectedCountry ? `en ${selectedCountry.esName}` : ''}
             </h3>
           </div>
           
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+          <div className="flex flex-wrap justify-center bg-white/5 p-1 rounded-xl border border-white/10 w-full xl:w-auto">
             {categories.map((cat) => (
               <button
                 key={cat.id}
