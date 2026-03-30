@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🌦️ SkyWatch (WeatherLink Duo)</h1>
+  <h1>🌦️ Weather Flow (SkyWatch)</h1>
   <p><strong>Una aplicación meteorológica moderna, modular y multiplataforma con integración de Inteligencia Artificial.</strong></p>
 </div>
 
@@ -7,7 +7,7 @@
 
 ## 📖 Descripción del Proyecto
 
-**SkyWatch** (también conocido como *WeatherLink Duo*) es una aplicación web y móvil avanzada diseñada para proporcionar información meteorológica precisa en tiempo real, análisis históricos y resúmenes generados por Inteligencia Artificial. 
+**Weather Flow** (también conocido como *SkyWatch*) es una aplicación web y móvil avanzada diseñada para proporcionar información meteorológica precisa en tiempo real, análisis históricos y resúmenes generados por Inteligencia Artificial. 
 
 Desarrollada con las últimas tecnologías web, la aplicación destaca por su arquitectura **modular** que facilita el mantenimiento, una interfaz de usuario **Responsive** construida bajo el patrón de diseño *Glassmorphism*, y una robusta comunicación en tiempo real respaldada por **Supabase**. Está preparada para ser compilada de forma nativa como aplicación móvil (.APK) mediante **Capacitor**.
 
